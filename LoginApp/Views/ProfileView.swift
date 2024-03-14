@@ -1,24 +1,57 @@
 import SwiftUI
 import FirebaseAuth
+import FirebaseFirestore
+
+class UserData: ObservableObject {
+@Published var receiveNotifications = false
+}
 
 struct ProfileView: View {
+    @State private var email: String = ""
+    @State private var username: String = ""
+    @State private var lastName: String = ""
+    @State private var birthDate = Date()
+    
+    @State private var isDarkModeEnabled = false
+    @State private var showAlert = false
     @Environment(\.presentationMode) var presentationMode
-    @State private var userData: Login?
-    @State private var isSignedOut = false // Nuevo estado para rastrear si el usuario ha cerrado sesión
+    
+    // Firestore
+    let db = Firestore.firestore()
+    @State private var userData: UserData?
+    
+    var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        return formatter
+    }
     
     var body: some View {
-        VStack {
-            Text("Perfil del Usuario")
-                .font(.largeTitle)
-                .foregroundColor(.blue)
-                .padding()
-            
-            if let userData = userData {
-                VStack(alignment: .leading, spacing: 20) {
-                    UserInfoRow(title: "Correo electrónico:", value: userData.email)
-                    // Agrega más detalles del perfil según sea necesario
+        NavigationView {
+            Form {
+                Section(header: Text("Perfil")) {
+                    TextField("Nombre de Usuario", text: $username)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    
+                    TextField("Apellido", text: $lastName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    
+                    TextField("Correo Electrónico", text: $email)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    
+                    Section(header: Text("Fecha de Nacimiento")) {
+                        DatePicker("Fecha de Nacimiento", selection: $birthDate, displayedComponents: [.date])
+                            .datePickerStyle(GraphicalDatePickerStyle())
+                    }
                 }
-                .padding()
+                
+                Section(header: Text("Configuraciones")) {
+                    Toggle("Modo Oscuro", isOn: $isDarkModeEnabled)
+                    
+                    Button(action: saveUserData) {
+                        Text("Guardar")
+                    }
+                }
                 
                 Button(action: signOut) {
                     Text("Cerrar sesión")
@@ -27,54 +60,89 @@ struct ProfileView: View {
                         .background(Color.blue)
                         .cornerRadius(10)
                 }
-                .padding()
-                .fullScreenCover(isPresented: $isSignedOut) {
-                    LoginView()
-                }
-            } else {
-                ProgressView() // Muestra una vista de carga mientras se carga la información del usuario
+            }
+            .navigationBarTitle("Perfil y Configuraciones", displayMode: .inline)
+            .onAppear(perform: loadUserData)
+            .alert(isPresented: $showAlert) {
+                Alert(
+                    title: Text("Datos Guardados"),
+                    message: Text("Los datos se han guardado exitosamente."),
+                    dismissButton: .default(Text("Aceptar"))
+                )
+            }
+        }
+        .preferredColorScheme(isDarkModeEnabled ? .dark : .light)
+    }
+    
+    private func loadUserData() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        db.collection("users").document(userId).getDocument { document, error in
+            if let error = error {
+                print("Error al obtener los datos del perfil:", error.localizedDescription)
+                return
             }
             
-            Spacer()
-        }
-        .onAppear {
-            fetchUserData()
+            if let document = document, document.exists {
+                let data = document.data()
+                self.username = data?["username"] as? String ?? ""
+                self.lastName = data?["lastName"] as? String ?? ""
+                self.email = data?["email"] as? String ?? ""
+                let timestamp = data?["birthDate"] as? Timestamp
+                self.birthDate = timestamp?.dateValue() ?? Date()
+            }
         }
     }
     
-    func fetchUserData() {
-        guard let currentUser = Auth.auth().currentUser else { return }
+    private func saveUserData() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
         
-        // Simulamos algunos datos de usuario basados en la estructura Login
-        let fakeUserData = Login(email: currentUser.email ?? "example@example.com", password: "")
-        self.userData = fakeUserData
+        let userData = [
+            "username": username,
+            "lastName": lastName,
+            "email": email,
+            "birthDate": birthDate
+        ] as [String : Any]
+        
+        db.collection("users").document(userId).setData(userData) { error in
+            if let error = error {
+                print("Error al guardar los datos del perfil:", error.localizedDescription)
+                return
+            }
+            
+            showAlert = true
+        }
     }
     
-    func signOut() {
+    private func signOut() {
         do {
             try Auth.auth().signOut()
             presentationMode.wrappedValue.dismiss()
-            isSignedOut = true // Indicar que el usuario ha cerrado sesión
         } catch {
             print("Error al cerrar sesión:", error.localizedDescription)
         }
     }
 }
-
-struct UserInfoRow: View {
-    var title: String
-    var value: String
     
-    var body: some View {
-        HStack {
-            Text(title)
-                .fontWeight(.bold)
-                .foregroundColor(.blue)
-            Text(value)
+    struct UserInfoRow: View {
+        var title: String
+        var value: String
+        
+        var body: some View {
+            HStack {
+                Text(title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.blue)
+                Text(value)
+            }
+        }
+        
+    }
+
+
+    struct ProfileView_Preview: PreviewProvider {
+        static var previews: some View {
+            ProfileView()
         }
     }
-}
 
-#Preview {
-    ProfileView()
-}

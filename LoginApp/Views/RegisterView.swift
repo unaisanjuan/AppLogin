@@ -12,8 +12,8 @@ struct RegisterView: View {
     
 
     init(isRegistrationSuccess: Binding<Bool>) {
-            _isRegistrationSuccess = isRegistrationSuccess
-        }
+        _isRegistrationSuccess = isRegistrationSuccess
+    }
     
     var body: some View {
         VStack {
@@ -62,7 +62,6 @@ struct RegisterView: View {
     }
     
     func checkIfEmailExists() {
-        print("b")
         let db = Firestore.firestore()
         let email = registrationData.email.lowercased()
         
@@ -75,7 +74,8 @@ struct RegisterView: View {
             }
             
             if let documents = snapshot?.documents, !documents.isEmpty {
-                self.alertMessage = "Este correo electrónico ya está registrado"
+                // Mostrar una alerta cuando el correo electrónico ya está registrado
+                self.alertMessage = "Este correo electrónico ya está registrado por otra persona"
                 self.showAlertError = true
                 self.isCheckingEmail = false
             } else {
@@ -87,7 +87,6 @@ struct RegisterView: View {
     }
     
     func register() {
-        print("a")
         guard registrationData.password == registrationData.confirmPassword else {
             self.alertMessage = "Las contraseñas no coinciden"
             self.showAlertError = true
@@ -97,10 +96,15 @@ struct RegisterView: View {
         Auth.auth().createUser(withEmail: registrationData.email, password: registrationData.password) { (result, error) in
             if let error = error {
                 self.alertMessage = "Error al registrar el usuario: \(error.localizedDescription)"
-                self.showAlertError = true
+                showAlertError = true
+                showAlertSuccess = true
                 print("Error al registrar el usuario:", error.localizedDescription)
             } else {
                 self.saveUserData(email: self.registrationData.email)
+                // Vaciar los campos después del registro exitoso
+                self.registrationData.email = ""
+                self.registrationData.password = ""
+                self.registrationData.confirmPassword = ""
             }
         }
     }
@@ -117,11 +121,11 @@ struct RegisterView: View {
             } else {
                 alertMessage = "Datos guardados correctamente"
                 showAlertSuccess = true
+                
             }
         }
     }
 }
-
 
 struct RegisterView_Previews: PreviewProvider {
     @State static var isRegistrationSuccess = false // Definir isRegistrationSuccess en RegisterView_Previews
