@@ -105,7 +105,8 @@ struct RegisterView: View {
                 self.showAlertError = true
                 print("Error al registrar el usuario:", error.localizedDescription)
             } else {
-                self.saveUserData(email: self.registrationData.email)
+                self.alertMessage = "Registro exitoso"
+                self.showAlertSuccess = true // Aquí se establece showAlertSuccess en true después del registro exitoso
                 // Vaciar los campos después del registro exitoso
                 self.registrationData.email = ""
                 self.registrationData.password = ""
@@ -113,6 +114,7 @@ struct RegisterView: View {
             }
         }
     }
+
     
     func saveUserData(email: String) {
         let db = Firestore.firestore()
