@@ -12,8 +12,8 @@ struct RegisterView: View {
     
 
     init(isRegistrationSuccess: Binding<Bool>) {
-        _isRegistrationSuccess = isRegistrationSuccess
-    }
+            _isRegistrationSuccess = isRegistrationSuccess
+        }
     
     var body: some View {
         VStack {
@@ -53,12 +53,18 @@ struct RegisterView: View {
             Spacer()
         }
         .padding()
-        .alert(isPresented: $showAlertError) {
-            Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+        .alert(isPresented: .init(get: {
+            self.showAlertError || self.showAlertSuccess
+        }, set: { _ in
+            // No es necesario implementar el setter en este caso
+        })) {
+            if showAlertError {
+                return Alert(title: Text("Error"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            } else {
+                return Alert(title: Text("Registro exitoso"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            }
         }
-        .alert(isPresented: $showAlertSuccess) {
-            Alert(title: Text("Registro exitoso"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
-        }
+
     }
     
     func checkIfEmailExists() {
@@ -96,8 +102,7 @@ struct RegisterView: View {
         Auth.auth().createUser(withEmail: registrationData.email, password: registrationData.password) { (result, error) in
             if let error = error {
                 self.alertMessage = "Error al registrar el usuario: \(error.localizedDescription)"
-                showAlertError = true
-                showAlertSuccess = true
+                self.showAlertError = true
                 print("Error al registrar el usuario:", error.localizedDescription)
             } else {
                 self.saveUserData(email: self.registrationData.email)
@@ -126,6 +131,7 @@ struct RegisterView: View {
         }
     }
 }
+
 
 struct RegisterView_Previews: PreviewProvider {
     @State static var isRegistrationSuccess = false // Definir isRegistrationSuccess en RegisterView_Previews
