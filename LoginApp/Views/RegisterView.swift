@@ -46,6 +46,7 @@ struct RegisterView: View {
             
             Button("Registrarse") {
                 register()
+                saveUserData(email: registrationData.email)
             }
             .padding()
             .disabled(isCheckingEmail || registrationData.email.isEmpty || registrationData.password.isEmpty)
@@ -64,7 +65,6 @@ struct RegisterView: View {
                 return Alert(title: Text("Registro exitoso"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
             }
         }
-
     }
     
     func checkIfEmailExists() {
